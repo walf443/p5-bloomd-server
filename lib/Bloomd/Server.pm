@@ -1,7 +1,7 @@
 package Bloomd::Server;
-
 use strict;
 use warnings;
+use v5.0010;
 use AnyEvent;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
@@ -38,8 +38,32 @@ sub run {
         $ah->on_read(sub {
             shift->push_read(line => sub {
                 my ($ah, $line) = @_;
-                my ($cmd, @args) = split /\t/, $line;
-                $ah->push_write("OK\n");
+                my ($cmd, @args) = split /\s+/, $line;
+                if ( $cmd ) {
+                    given ($cmd) {
+                        when ( "set" ) {
+                            if ( @args >= 1 ) {
+                                $self->{bloom}->add(@args);
+                                $ah->push_write("OK\r\n");
+                            } else {
+                                $ah->push_write("ERROR\r\n");
+                            }
+                        }
+                        when ( "test" ) {
+                            if ( @args >= 1 ) {
+                                for my $arg ( @args ) {
+                                    my $ret = $self->{bloom}->check($arg) ? 1 : 0;
+                                    $ah->push_write("TEST $arg $ret\r\n");
+                                }
+                                $ah->push_write("OK\r\n");
+                            }
+                        }
+                        default {
+                            $ah->push_write("ERROR\r\n");
+                        }
+                    }
+                } else {
+                }
             });
         });
 
