@@ -3,6 +3,8 @@ NAME
 
 SYNOPSIS
       use Bloomd::Server;
+      my $server = Bloomd::Server->new;
+      $server->run;
 
 DESCRIPTION
     Bloomd::Server is
