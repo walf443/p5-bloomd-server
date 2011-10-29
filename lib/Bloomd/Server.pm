@@ -20,7 +20,7 @@ sub new {
     $args{stats}->{capacity} = $args{capacity};
     $args{stats}->{error_rate} = $args{error_rate};
     $args{stats}->{cmd_set} = 0;
-    $args{stats}->{cmd_test} = 0;
+    $args{stats}->{cmd_check} = 0;
     $args{bloom} = Bloom::Faster->new({ n => $args{capacity}, e => $args{error_rate}});
     bless \%args, $class;
 }
@@ -59,13 +59,13 @@ sub run {
                                 $ah->push_write("ERROR\r\n");
                             }
                         }
-                        when ( "test" ) {
-                            $self->{stats}->{cmd_test}++;
+                        when ( "check" ) {
+                            $self->{stats}->{cmd_check}++;
 
                             if ( @args >= 1 ) {
                                 for my $arg ( @args ) {
                                     my $ret = $self->{bloom}->check($arg) ? 1 : 0;
-                                    $ah->push_write("TEST $arg $ret\r\n");
+                                    $ah->push_write("CHECK $arg $ret\r\n");
                                 }
                                 $ah->push_write("OK\r\n");
                             }
