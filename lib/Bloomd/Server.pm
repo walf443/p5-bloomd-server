@@ -67,7 +67,7 @@ sub run {
                                     my $ret = $self->{bloom}->check($arg) ? 1 : 0;
                                     $ah->push_write("CHECK $arg $ret\r\n");
                                 }
-                                $ah->push_write("OK\r\n");
+                                $ah->push_write("END\r\n");
                             }
                         }
                         when ( "stats" ) {
