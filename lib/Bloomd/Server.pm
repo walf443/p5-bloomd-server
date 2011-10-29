@@ -13,8 +13,14 @@ sub new {
     my ($class, %args) = @_;
     $args{port} ||= 26006;
     $args{clients} = [];
-    $args{capacity} ||= 100_000_000;
+    $args{capacity} ||= 100_000;
     $args{error_rate} ||= .001;
+    $args{stats} = {};
+    $args{stats}->{pid} = $$;
+    $args{stats}->{capacity} = $args{capacity};
+    $args{stats}->{error_rate} = $args{error_rate};
+    $args{stats}->{cmd_set} = 0;
+    $args{stats}->{cmd_test} = 0;
     $args{bloom} = Bloom::Filter->new(capacity => $args{capacity}, error_rate => $args{error_rate});
     bless \%args, $class;
 }
@@ -43,7 +49,10 @@ sub run {
                 if ( $cmd ) {
                     given ($cmd) {
                         when ( "set" ) {
+                            $self->{stats}->{cmd_set}++;
+
                             if ( @args >= 1 ) {
+
                                 $self->{bloom}->add(@args);
                                 $ah->push_write("OK\r\n");
                             } else {
@@ -51,6 +60,8 @@ sub run {
                             }
                         }
                         when ( "test" ) {
+                            $self->{stats}->{cmd_test}++;
+
                             if ( @args >= 1 ) {
                                 for my $arg ( @args ) {
                                     my $ret = $self->{bloom}->check($arg) ? 1 : 0;
@@ -58,6 +69,12 @@ sub run {
                                 }
                                 $ah->push_write("OK\r\n");
                             }
+                        }
+                        when ( "stats" ) {
+                            for my $key ( sort keys %{ $self->{stats} } ) {
+                                $ah->push_write("STAT $key @{[ $self->{stats}->{$key} ]}\r\n");
+                            }
+                            $ah->push_write("END\r\n");
                         }
                         default {
                             $ah->push_write("ERROR\r\n");
