@@ -16,6 +16,11 @@ my $server = Test::TCP->new(
     },
 );
 
+$SIG{ALRM} = sub {
+    die "timeout";
+};
+alarm 5;
+
 ok 1, "start server ok";
 
 my $client = IO::Socket::INET->new(
