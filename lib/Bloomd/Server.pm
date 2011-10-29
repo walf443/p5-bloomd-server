@@ -13,7 +13,9 @@ sub new {
     my ($class, %args) = @_;
     $args{port} ||= 26006;
     $args{clients} = [];
-    $args{bloom} = Bloom::Filter->new(capacity => 10000, error_rate => .001 );
+    $args{capacity} ||= 100_000_000;
+    $args{error_rate} ||= .001;
+    $args{bloom} = Bloom::Filter->new(capacity => $args{capacity}, error_rate => $args{error_rate});
     bless \%args, $class;
 }
 
