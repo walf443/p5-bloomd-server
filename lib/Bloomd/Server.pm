@@ -1,7 +1,7 @@
 package Bloomd::Server;
 use strict;
 use warnings;
-use v5.0010;
+use v5.10;
 use AnyEvent;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
