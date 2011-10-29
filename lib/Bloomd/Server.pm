@@ -89,6 +89,26 @@ sub run {
                             $ah->push_write("STAT vector_size @{[ $self->{bloom}->get_vectorsize ]}\r\n");
                             $ah->push_write("END\r\n");
                         }
+                        when ( "backup" ) {
+                            if ( $self->{backupdir} ) {
+                                $self->{stats}->{server_time} = gettimeofday * 10_0000;
+                                my $pid = fork;
+                                if ( defined $pid ) {
+                                    if ( $pid ) {
+                                        $ah->push_write("OK\r\n");
+                                    } else {
+                                        my $backup_file = $self->{backupdir} . "/snapshot." . $self->{stats}->{server_time};
+                                        $self->{bloom}->to_file($backup_file);
+                                        exit;
+                                    }
+                                } else {
+                                    critf("Can't fork: $!") unless defined $pid;
+                                    $ah->push_write("ERROR\r\n");
+                                }
+                            } else {
+                                $ah->push_write("ERROR\r\n");
+                            }
+                        }
                         default {
                             $ah->push_write("ERROR\r\n");
                         }
@@ -101,10 +121,6 @@ sub run {
     }, sub {
         infof("starting Bloomd::Server port: @{[ $self->{port} ]}");
     };
-}
-
-sub DESTROY {
-    infof("shutdown Bloomd::Server");
 }
 
 1;
