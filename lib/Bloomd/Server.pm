@@ -6,6 +6,7 @@ use AnyEvent;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
 use Bloom::Faster;
+use Time::HiRes qw(gettimeofday);
 use Log::Minimal qw/infof warnf debugf critf/;
 our $VERSION = '0.01';
 
@@ -22,6 +23,7 @@ sub new {
     $args{stats}->{cmd_set} = 0;
     $args{stats}->{cmd_check} = 0;
     $args{stats}->{uptime} = 0;
+    $args{stats}->{server_time} = gettimeofday * 10_0000;
     $args{bloom} = Bloom::Faster->new({ n => $args{capacity}, e => $args{error_rate}});
     bless \%args, $class;
 }
@@ -31,6 +33,7 @@ sub run {
 
     $self->{timer} = AnyEvent->timer(after => 1, interval => 1, cb => sub {
         $self->{stats}->{uptime}++;
+        $self->{stats}->{server_time} = gettimeofday * 10_0000;
     });
 
     AnyEvent::Socket::tcp_server undef, $self->{port}, sub {
