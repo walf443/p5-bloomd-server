@@ -162,6 +162,9 @@ sub run {
                                         }
                                     });
                                 });
+                                $ulog_handle->on_eof(sub {
+                                    $ah->push_write("END\r\n");
+                                });
                                 $self->{clients}->[fileno($fh)] = $ulog_handle;
 
                                 $ah->push_write("END\r\n");
