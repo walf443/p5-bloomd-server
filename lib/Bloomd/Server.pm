@@ -21,12 +21,18 @@ sub new {
     $args{stats}->{error_rate} = $args{error_rate};
     $args{stats}->{cmd_set} = 0;
     $args{stats}->{cmd_check} = 0;
+    $args{stats}->{uptime} = 0;
     $args{bloom} = Bloom::Faster->new({ n => $args{capacity}, e => $args{error_rate}});
     bless \%args, $class;
 }
 
 sub run {
     my ($self, ) = @_;
+
+    $self->{timer} = AnyEvent->timer(after => 1, interval => 1, cb => sub {
+        $self->{stats}->{uptime}++;
+    });
+
     AnyEvent::Socket::tcp_server undef, $self->{port}, sub {
         my ($fh,$host, $port) = @_
             or die "Can't connect to server";
