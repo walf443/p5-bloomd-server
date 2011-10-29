@@ -24,7 +24,11 @@ sub new {
     $args{stats}->{cmd_check} = 0;
     $args{stats}->{uptime} = 0;
     $args{stats}->{server_time} = gettimeofday * 10_0000;
-    $args{bloom} = Bloom::Faster->new({ n => $args{capacity}, e => $args{error_rate}});
+    if ( $args{from_snapshot} ) {
+        $args{bloom} = Bloom::Faster->new($args{from_snapshot});
+    } else {
+        $args{bloom} = Bloom::Faster->new({ n => $args{capacity}, e => $args{error_rate}});
+    }
     bless \%args, $class;
 }
 
