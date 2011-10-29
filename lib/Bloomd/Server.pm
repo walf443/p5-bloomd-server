@@ -43,6 +43,21 @@ sub run {
         $self->{stats}->{server_time} = gettimeofday * 10_0000;
     });
 
+    if ( $self->{ulog} ) {
+        $self->{current_ulog} = $self->{ulog} . "/ulog-" . $self->{server_id} . "-0001";
+        open my $fh, '>', $self->{current_ulog}
+            or die "Can't open file: $!";
+
+        $self->{ulog_handle} = AnyEvent::Handle->new(
+            fh => $fh,
+            on_error => sub {
+                my ($ah, $fatal, $msg) = @_;
+                critf($msg);
+                $ah->destroy;
+            },
+        );
+    }
+
     AnyEvent::Socket::tcp_server undef, $self->{port}, sub {
         my ($fh,$host, $port) = @_
             or die "Can't connect to server";
@@ -71,6 +86,15 @@ sub run {
 
                                 for my $arg ( @args ) {
                                     $self->{bloom}->add($arg);
+                                }
+                                if ( $self->{ulog_handle} ) {
+                                    $self->{stats}->{server_time} = gettimeofday * 10_0000;
+                                    $self->{ulog_handle}->push_write(sprintf("%s\t%d\t%s\t%s\r\n",
+                                        $self->{stats}->{server_time}, 
+                                        $self->{stats}->{server_id},
+                                        "set",
+                                        join "\t", @args
+                                    ));
                                 }
                                 $ah->push_write("OK\r\n");
                             } else {
