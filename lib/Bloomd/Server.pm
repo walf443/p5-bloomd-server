@@ -16,8 +16,11 @@ sub new {
     $args{clients} = [];
     $args{capacity} ||= 100_000;
     $args{error_rate} ||= .001;
+    $args{server_id} ||= 1;
+
     $args{stats} = {};
     $args{stats}->{pid} = $$;
+    $args{stats}->{server_id} = $args{server_id};
     $args{stats}->{capacity} = $args{capacity};
     $args{stats}->{error_rate} = $args{error_rate};
     $args{stats}->{cmd_set} = 0;
