@@ -74,6 +74,8 @@ sub run {
                             for my $key ( sort keys %{ $self->{stats} } ) {
                                 $ah->push_write("STAT $key @{[ $self->{stats}->{$key} ]}\r\n");
                             }
+                            $ah->push_write("STAT key_count @{[ $self->{bloom}->key_count ]}\r\n");
+                            $ah->push_write("STAT vector_size @{[ $self->{bloom}->get_vectorsize ]}\r\n");
                             $ah->push_write("END\r\n");
                         }
                         default {

@@ -51,7 +51,7 @@ subtest "check command check" => sub {
         is $line, "CHECK foo 1\r\n", "foo should be 1"
             or diag($!);
         $line = <$client>;
-        is $line, "OK\r\n", "response should end"
+        is $line, "END\r\n", "response should end"
             or diag($!);
     };
 
@@ -63,7 +63,7 @@ subtest "check command check" => sub {
         is $line, "CHECK bar 0\r\n", "bar should be 0"
             or diag($!);
         $line = <$client>;
-        is $line, "OK\r\n", "response should end"
+        is $line, "END\r\n", "response should end"
             or diag($!);
     };
 
@@ -82,7 +82,7 @@ subtest "check command check" => sub {
             or diag($!);
 
         $line = <$client>;
-        is $line, "OK\r\n", "response should end"
+        is $line, "END\r\n", "response should end"
             or diag($!);
     };
 
