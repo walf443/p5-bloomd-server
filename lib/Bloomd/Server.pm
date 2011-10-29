@@ -53,7 +53,9 @@ sub run {
 
                             if ( @args >= 1 ) {
 
-                                $self->{bloom}->add(@args);
+                                for my $arg ( @args ) {
+                                    $self->{bloom}->add($arg);
+                                }
                                 $ah->push_write("OK\r\n");
                             } else {
                                 $ah->push_write("ERROR\r\n");
