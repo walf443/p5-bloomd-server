@@ -6,7 +6,7 @@ use AnyEvent;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
 use Bloom::Filter;
-use Log::Minimal qw/infof warnf debugf/;
+use Log::Minimal qw/infof warnf debugf critf/;
 our $VERSION = '0.01';
 
 sub new {
@@ -27,7 +27,6 @@ sub run {
             fh => $fh,
             on_error => sub {
                 my ($ah, $fatal, $msg) = @_;
-                critf($msg);
                 $ah->destroy;
             },
         );
