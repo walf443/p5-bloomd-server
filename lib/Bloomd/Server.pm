@@ -5,7 +5,7 @@ use v5.10;
 use AnyEvent;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
-use Bloom::Filter;
+use Bloom::Faster;
 use Log::Minimal qw/infof warnf debugf critf/;
 our $VERSION = '0.01';
 
@@ -21,7 +21,7 @@ sub new {
     $args{stats}->{error_rate} = $args{error_rate};
     $args{stats}->{cmd_set} = 0;
     $args{stats}->{cmd_test} = 0;
-    $args{bloom} = Bloom::Filter->new(capacity => $args{capacity}, error_rate => $args{error_rate});
+    $args{bloom} = Bloom::Faster->new({ n => $args{capacity}, e => $args{error_rate}});
     bless \%args, $class;
 }
 
