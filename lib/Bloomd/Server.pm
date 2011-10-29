@@ -140,6 +140,35 @@ sub run {
                                 $ah->push_write("ERROR\r\n");
                             }
                         }
+                        when ( "slave" ) {
+                            my ($timestamp, ) = @args;
+                            $timestamp ||= 0;
+                            if ( $self->{ulog} ) {
+                                open my $fh, "<", $self->{ulog} . "/ulog-" . $self->{server_id} . "-0001"
+                                    or critf("Can't open ulog: $!");
+                                my $ulog_handle = AnyEvent::Handle->new(
+                                    fh => $fh,
+                                    on_error => sub {
+                                        my ($ah, $fatal, $msg) = @_;
+                                        $ah->destroy;
+                                    }
+                                );
+                                $ulog_handle->on_read(sub {
+                                    shift->push_read(line => sub {
+                                        my ($ulog_handle, $line) = @_;
+                                        my ($ts, ) = split(/\t/, $line);
+                                        if ( $ts >= $timestamp ) {
+                                            $ah->push_write("SLAVE\t$line\r\n");
+                                        }
+                                    });
+                                });
+                                $self->{clients}->[fileno($fh)] = $ulog_handle;
+
+                                $ah->push_write("END\r\n");
+                            } else {
+                                $ah->push_write("ERROR\r\n");
+                            }
+                        }
                         default {
                             $ah->push_write("ERROR\r\n");
                         }
