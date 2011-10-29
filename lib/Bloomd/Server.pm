@@ -71,6 +71,10 @@ sub run {
     };
 }
 
+sub DESTROY {
+    infof("shutdown Bloomd::Server");
+}
+
 1;
 __END__
 
