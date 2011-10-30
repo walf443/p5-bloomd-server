@@ -27,6 +27,7 @@ sub new {
     $args{stats}->{cmd_check} = 0;
     $args{stats}->{uptime} = 0;
     $args{stats}->{server_time} = gettimeofday * 10_0000;
+    $args{master_port} ||= 26006;
     if ( $args{from_snapshot} ) {
         $args{bloom} = Bloom::Faster->new($args{from_snapshot});
     } else {
@@ -58,6 +59,23 @@ sub run {
         );
     }
 
+    if ( $self->{master_host} ) {
+        AnyEvent::Socket::tcp_connect $self->{master_host}, $self->{master_port}, sub {
+            my ($fh, ) = @_;
+
+            infof("starting replication thread to master: %s:%d", $self->{master_host}, $self->{master_port});
+            my $ah = AnyEvent::Handle->new(
+                fh => $fh,
+                on_error => sub {
+                    my ($ah, $fatal, $msg) = @_;
+                    $ah->destroy;
+                }
+            );
+            $self->{slave_thread} = $ah;
+            $self->repl_thread($ah, 0);
+        }
+    }
+
     AnyEvent::Socket::tcp_server undef, $self->{port}, sub {
         my ($fh,$host, $port) = @_
             or die "Can't connect to server";
@@ -83,19 +101,7 @@ sub run {
                             $self->{stats}->{cmd_set}++;
 
                             if ( @args >= 1 ) {
-
-                                for my $arg ( @args ) {
-                                    $self->{bloom}->add($arg);
-                                }
-                                if ( $self->{ulog_handle} ) {
-                                    $self->{stats}->{server_time} = gettimeofday * 10_0000;
-                                    $self->{ulog_handle}->push_write(sprintf("%s\t%d\t%s\t%s\r\n",
-                                        $self->{stats}->{server_time}, 
-                                        $self->{stats}->{server_id},
-                                        "set",
-                                        join "\t", @args
-                                    ));
-                                }
+                                $self->set($self->{server_id}, @args);
                                 $ah->push_write("OK\r\n");
                             } else {
                                 $ah->push_write("ERROR\r\n");
@@ -164,10 +170,10 @@ sub run {
                                 });
                                 $ulog_handle->on_eof(sub {
                                     $ah->push_write("END\r\n");
+                                    $self->{clients}->[fileno($fh)] = undef;
+                                    shift->destroy;
                                 });
                                 $self->{clients}->[fileno($fh)] = $ulog_handle;
-
-                                $ah->push_write("END\r\n");
                             } else {
                                 $ah->push_write("ERROR\r\n");
                             }
@@ -184,6 +190,64 @@ sub run {
     }, sub {
         infof("starting Bloomd::Server port: @{[ $self->{port} ]}");
     };
+}
+
+sub set {
+    my ($self, $server_id, @keys) = @_;
+
+    for my $key ( @keys ) {
+        $self->{bloom}->add($key);
+    }
+    if ( $self->{ulog_handle} ) {
+        $self->{stats}->{server_time} = gettimeofday * 10_0000;
+        $self->{ulog_handle}->push_write(sprintf("%s\t%d\t%s\t%s\r\n",
+            $self->{stats}->{server_time}, 
+            $server_id,
+            "set",
+            join "\t", @keys
+        ));
+    }
+}
+
+sub update_timestamp {
+    my ($self, $timestamp) = @_;
+
+    open my $tx_handle, '>', "./slave.rts"
+        or die "Can't open file: $!";
+
+    $self->{timestamp_handle} = AnyEvent::Handle->new(
+        fh => $tx_handle,
+        on_error => sub {
+            my ($ah, $fatal, $msg) = @_;
+            $ah->destroy;
+        }
+    );
+    $self->{stats}->{repl_timestamp} = $timestamp;
+    $self->{timestamp_handle}->push_write("$timestamp\r\n")
+}
+
+sub repl_thread {
+    my ($self, $ah, $timestamp) = @_;
+
+    $ah->push_write(sprintf("slave %d\r\n", $timestamp || 0 ));
+    $ah->on_read(sub {
+        shift->push_read(line => sub {
+            my ($ah, $line) = @_;
+            if ( $line eq "END" ) {
+                $ah->push_write(sprintf("slave %d\r\n", $self->{stats}->{repl_timestamp} || 0));
+            } else {
+                my ($slave, $tx, $server_id, $cmd, @keys) = split /\t/, $line;
+                if ( $slave eq "SLAVE" ) {
+                    if ( $server_id != $self->{server_id} ) {
+                        $self->$cmd($server_id, @keys);
+                    }
+                    $self->update_timestamp($tx);
+                } else {
+                    warn $line;
+                }
+            }
+        });
+    });
 }
 
 1;
